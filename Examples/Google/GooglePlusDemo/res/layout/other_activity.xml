@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/google_background"
+    android:gravity="center"
+    android:orientation="vertical" >
+
+    <ImageView 
+        android:id="@+id/imageView1"
+		android:layout_width="wrap_content"	
+		android:layout_height="wrap_content"
+		android:src="@drawable/google_plus_logo1"
+		android:contentDescription="@string/content"
+        />
+   
+    <Button
+        android:id="@+id/signout_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/common_signin_btn_text_normal_dark"
+        android:text="@string/btn_signout"
+        android:textColor="#ffffff"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        ></Button>
+    
+    <Button
+        android:id="@+id/userProfile_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/common_signin_btn_text_normal_dark"
+        android:text="@string/btn_userInfo"
+        android:textColor="#ffffff"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:gravity="center_horizontal"
+        ></Button>
+    <Button
+        android:id="@+id/share_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/common_signin_btn_text_normal_dark"
+        android:text="@string/btn_share"
+        android:textColor="#ffffff"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:gravity="center_horizontal"
+        ></Button>
+     <Button
+        android:id="@+id/friendsprofile_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/common_signin_btn_text_normal_dark"
+        android:text="@string/btn_friendsProfile"
+        android:textColor="#ffffff"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:gravity="center_horizontal"
+        ></Button>
+ 
+</LinearLayout>
