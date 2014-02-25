@@ -32,6 +32,7 @@ public class PostActivity extends Activity implements OBLFacebookPostInterface, 
         
         objlogin=new OBLFacebookLogin(this, this);
         objlogin.setLoginBehaviour(OBLFacebookLogin.NATIVE_WEBVIEW);
+        objlogin.initSession(savedInstanceState);
         
         objpost=new OBLFacebookPost(this, this);
         

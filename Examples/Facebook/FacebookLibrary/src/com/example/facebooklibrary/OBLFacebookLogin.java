@@ -45,7 +45,7 @@ public class OBLFacebookLogin extends OBLLogin {
 		this.context = _context;
 		this.activity = _activity;
 		obllog = new OBLLog();
-		error=new OBLError();
+		error = new OBLError();
 		try {
 			inter = (OBLFacebookLoginInterface) activity;
 		} catch (ClassCastException e) {
@@ -104,7 +104,7 @@ public class OBLFacebookLogin extends OBLLogin {
 		if (resultCode == Activity.RESULT_OK && session.isOpened()) {
 			onSessionStateChange(session, session.getState(), null);
 		}
-		
+
 		if (requestCode == REQUEST_CODE_LOGIN_READ
 				&& resultCode == Activity.RESULT_OK) {
 			if (PublishPermission.size() != 0) {
@@ -138,11 +138,8 @@ public class OBLFacebookLogin extends OBLLogin {
 								getLoginBehaviour()).setRequestCode(
 								REQUEST_CODE_LOGIN_PUBLISH));
 					}
-				}
-				else
-				{
-					if (isPostCheck())
-					{
+				} else {
+					if (isPostCheck()) {
 						oblpost = new OBLFacebookPost(context, activity);
 						NewPermission = session.getPermissions();
 						if (NewPermission.contains("publish_actions")) {
@@ -150,20 +147,21 @@ public class OBLFacebookLogin extends OBLLogin {
 							if (posttype == 1) {
 								oblpost.post(null);
 							} else if (posttype == 2) {
-								oblpost.postsStatusWithDetailsDescription(null, null,
-										null, null, null);
+								oblpost.postsStatusWithDetailsDescription(null,
+										null, null, null, null);
 							}
-						}  else {
+						} else {
 							obllog.logMessage("Error: Publish Permission Not Granted");
 							error.setName("Permission Missing");
 							error.setMessage("Publish Permission Is Not Granted");
 							error.setDescription("");
-							oblpost.fbpostinterface.postingCompleted(false,error);
+							oblpost.fbpostinterface.postingCompleted(false,
+									error);
 						}
 						setPostCheck(false);
 					}
 				}
-				
+
 			}
 
 		}
@@ -173,7 +171,8 @@ public class OBLFacebookLogin extends OBLLogin {
 			if (isPostCheck()) {
 				oblpost = new OBLFacebookPost(context, activity);
 				NewPermission = session.getPermissions();
-				if (NewPermission.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
+				if (NewPermission
+						.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
 
 					if (posttype == 1) {
 						oblpost.post(null);
@@ -181,17 +180,16 @@ public class OBLFacebookLogin extends OBLLogin {
 						oblpost.postsStatusWithDetailsDescription(null, null,
 								null, null, null);
 					}
-				}  else {
+				} else {
 					obllog.logMessage("Error: Publish Permission Not Granted");
 					error.setName("Permission Missing");
 					error.setMessage("Publish Permission Is Not Granted");
 					error.setDescription("");
-					oblpost.fbpostinterface.postingCompleted(false,error);
+					oblpost.fbpostinterface.postingCompleted(false, error);
 				}
 				setPostCheck(false);
 			}
 		}
-		
 
 		if (resultCode == Activity.RESULT_CANCELED) {
 			obllog.logMessage("Login Aborted");
@@ -228,11 +226,11 @@ public class OBLFacebookLogin extends OBLLogin {
 			Exception exception) {
 		if (state.isOpened()) {
 			obllog.logMessage("Logged In...");
-			inter.loginResult(true,null);
+			inter.loginResult(true, null);
 		} else if ((state.isClosed() || state != SessionState.OPENED)
 				&& state != SessionState.CREATED_TOKEN_LOADED) {
 			obllog.logMessage("Logged Out...");
-			inter.loginResult(false,null);
+			inter.loginResult(false, null);
 		}
 	}
 
@@ -377,8 +375,6 @@ public class OBLFacebookLogin extends OBLLogin {
 		}
 	}
 
-	
-
 	public boolean checkNativeApp() {
 		final PackageManager pm = context.getPackageManager();
 		List<ApplicationInfo> packages = pm
@@ -417,8 +413,9 @@ public class OBLFacebookLogin extends OBLLogin {
 		session = Session.getActiveSession();
 		if (session.isOpened()) {
 			session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
-					activity,OBLFacebookPermission.PUBLISH_ACTIONS).setLoginBehavior(
-					getLoginBehaviour()).setRequestCode(requestcode));
+					activity, OBLFacebookPermission.PUBLISH_ACTIONS)
+					.setLoginBehavior(getLoginBehaviour()).setRequestCode(
+							requestcode));
 		}
 		Session.setActiveSession(session);
 	}
