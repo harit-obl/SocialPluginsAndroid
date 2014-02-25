@@ -2,6 +2,7 @@ package com.example.facebooklibrary;
 
 public class OBLFacebookPermission {
 
+	public static final String BASIC_INFO="basic_info";
 	public static final String USER_ABOUT_ME="user_about_me";
 	public static final String FRIENDS_ABOUT_ME="friends_about_me";
 	public static final String USER_BIRTHDAY="user_birthday";

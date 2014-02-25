@@ -6,6 +6,11 @@ import java.util.List;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.facebook.Request;
+import com.facebook.Response;
+import com.facebook.Session;
+import com.facebook.model.GraphUser;
+
 import android.app.Activity;
 import android.os.Bundle;
 
@@ -14,13 +19,13 @@ public class OBLFacebookQuey {
 	public static OBLFacebookUser userprofile;
 	public Activity activity;
 	public static Session session;
-	FacebookQueryInterface fbqinterface;
+	OBLFacebookQueryInterface fbqinterface;
 	OBLLog objlog;
 
 	public OBLFacebookQuey(Activity _activity) {
 		// TODO Auto-generated constructor stub
 		activity = _activity;
-		fbqinterface = (FacebookQueryInterface) activity;
+		fbqinterface = (OBLFacebookQueryInterface) activity;
 		objlog = new OBLLog();
 	}
 
@@ -194,6 +199,7 @@ public class OBLFacebookQuey {
 								fbqinterface.friendsInfoReceived(friendlist);
 							}
 						}
+
 					});
 			Bundle bundle=new Bundle();
 			bundle.putString("fields","gender,name,id");

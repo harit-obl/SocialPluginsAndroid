@@ -6,18 +6,29 @@ import java.util.List;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
+import com.facebook.Session;
+import com.facebook.SessionDefaultAudience;
+import com.facebook.SessionLoginBehavior;
+import com.facebook.SessionState;
 
 public class OBLFacebookLogin extends OBLLogin {
 
-	private List<String> ReadPermission, PublishPermission, OldPermission,
-			NewPermission;
+	private static List<String> ReadPermission, PublishPermission,
+			OldPermission, NewPermission;
 	private Session session;
 	private Context context;
 	private Activity activity;
-	private UiLifecycleHelper uiHelper;
-	private SessionLoginBehavior loginBehaviour = SessionLoginBehavior.SSO_WITH_FALLBACK;
+	private static SessionLoginBehavior loginBehaviour = SessionLoginBehavior.SSO_WITH_FALLBACK;
+	private static SessionDefaultAudience defaultAudience = SessionDefaultAudience.EVERYONE;
+	public static final String ONLY_NATIVE = "native";
+	public static final String ONLY_WEBVIEW = "webview";
+	public static final String NATIVE_WEBVIEW = "both";
+	public static final String EVERYONE = "everyone";
+	public static final String FRIENDS = "friends";
+	public static final String ONLY_ME = "onlyme";
 	private static final String PUBLISH_PERMISSION_PREFIX = "publish";
 	private static final String MANAGE_PERMISSION_PREFIX = "manage";
 	public static final int REQUEST_CODE_LOGIN = 199188;
@@ -25,52 +36,51 @@ public class OBLFacebookLogin extends OBLLogin {
 	public static final int REQUEST_CODE_LOGIN_PUBLISH = 199189;
 	OBLLog obllog;
 	OBLFacebookLoginInterface inter;
-	boolean check = false;
-
-	private Session.StatusCallback callback = new Session.StatusCallback() {
-		@Override
-		public void call(Session session, SessionState state,
-				Exception exception) {
-			// TODO Auto-generated method stub
-			onSessionStateChange(session, state, exception);
-		}
-	};
+	OBLFacebookPost oblpost;
+	OBLError error;
+	public static boolean postcheck = false;
+	public static int posttype = 0;
 
 	public OBLFacebookLogin(Context _context, Activity _activity) {
 		this.context = _context;
 		this.activity = _activity;
 		obllog = new OBLLog();
-		inter = (OBLFacebookLoginInterface) activity;
+		error=new OBLError();
+		try {
+			inter = (OBLFacebookLoginInterface) activity;
+		} catch (ClassCastException e) {
+			obllog.logMessage(activity.getLocalClassName()
+					+ " must implement OBLFacebookLoginInterface for getting login result");
+			activity.finish();
+		}
 	}
 
 	// Initialize (Start) Session
 	public Session initSession(Bundle savedInstanceState) {
-		uiHelper = new UiLifecycleHelper(activity, callback);
-		uiHelper.onCreate(savedInstanceState);
+
 		session = Session.getActiveSession();
-		Log.i("FINState",session.getState().toString());
 		if (session == null) {
 			if (savedInstanceState != null) {
-				Log.i("Restore",session.getState().toString());
 				session = Session.restoreSession(activity, null, null,
 						savedInstanceState);
 			}
 			if (session == null) {
-				Log.i("NULL LOGIN",session.getState().toString());
 				session = new Session(context);
 			}
 			if (session.getState().equals(SessionState.CREATED_TOKEN_LOADED)) {
-				Log.i("OBLFBLOGIN",session.getState().toString());
 				session.openForRead(new Session.OpenRequest(activity));
 			}
 		}
 		Session.setActiveSession(session);
+		onSessionStateChange(session, session.getState(), null);
 		return session;
 	}
 
 	@Override
 	public void login() {
 		session = Session.getActiveSession();
+		if (getLoginBehaviour() == SessionLoginBehavior.SSO_ONLY)
+			checkNativeApp();
 
 		if (session == null
 				|| session.getState() == SessionState.CLOSED_LOGIN_FAILED
@@ -86,11 +96,17 @@ public class OBLFacebookLogin extends OBLLogin {
 	}
 
 	public boolean ActivtyResult(int requestCode, int resultCode, Intent data) {
-		uiHelper.onActivityResult(requestCode, resultCode, data);
-		Log.i("Check Value:", String.valueOf(check));
+		// uiHelper.onActivityResult(requestCode, resultCode, data);
 		Session.getActiveSession().onActivityResult(activity, requestCode,
 				resultCode, data);
+
 		session = Session.getActiveSession();
+
+		if (resultCode == Activity.RESULT_OK && session.isOpened()) {
+			// Session.setActiveSession(session);
+			onSessionStateChange(session, session.getState(), null);
+		}
+		
 		if (requestCode == REQUEST_CODE_LOGIN_READ
 				&& resultCode == Activity.RESULT_OK) {
 			if (PublishPermission.size() != 0) {
@@ -114,37 +130,77 @@ public class OBLFacebookLogin extends OBLLogin {
 					}
 					if (!session.isOpened()) {
 						session.openForPublish(new Session.OpenRequest(activity)
-								.setLoginBehavior(
-										SessionLoginBehavior.SUPPRESS_SSO)
+								.setLoginBehavior(getLoginBehaviour())
 								.setPermissions(NewPermission)
 								.setRequestCode(REQUEST_CODE_LOGIN_PUBLISH));
 					}
 					if (session.isOpened()) {
 						session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
-								activity, NewPermission)
-								.setCallback(callback)
-								.setLoginBehavior(
-										SessionLoginBehavior.SUPPRESS_SSO)
-								.setRequestCode(REQUEST_CODE_LOGIN_PUBLISH));
+								activity, NewPermission).setLoginBehavior(
+								getLoginBehaviour()).setRequestCode(
+								REQUEST_CODE_LOGIN_PUBLISH));
 					}
 				}
+				else
+				{
+					if (isPostCheck())
+					{
+						oblpost = new OBLFacebookPost(context, activity);
+						NewPermission = session.getPermissions();
+						if (NewPermission.contains("publish_actions")) {
+
+							if (posttype == 1) {
+								oblpost.post(null);
+							} else if (posttype == 2) {
+								oblpost.postsStatusWithDetailsDescription(null, null,
+										null, null, null);
+							}
+						}  else {
+							obllog.logMessage("Error: Publish Permission Not Granted");
+							error.setName("Permission Missing");
+							error.setMessage("Publish Permission Is Not Granted");
+							error.setDescription("");
+							oblpost.fbpostinterface.postingCompleted(false,error);
+						}
+						setPostCheck(false);
+					}
+				}
+				
 			}
 
 		}
-		if ((requestCode == OBLFacebookPost.REQUEST_CODE_POST || requestCode == OBLFacebookPost.REQUEST_CODE_POST_DETAILS)
+
+		if (requestCode == REQUEST_CODE_LOGIN_PUBLISH
 				&& resultCode == Activity.RESULT_OK) {
-			OBLFacebookPost oblpost = new OBLFacebookPost(context, activity);
-			if (requestCode == OBLFacebookPost.REQUEST_CODE_POST) {
-				oblpost.post(null);
-			} else if (requestCode == OBLFacebookPost.REQUEST_CODE_POST_DETAILS) {
-				oblpost.postsStatusWithDetailsDescription(null, null, null,
-						null, null);
-			}
+			if (isPostCheck()) {
+				oblpost = new OBLFacebookPost(context, activity);
+				NewPermission = session.getPermissions();
+				if (NewPermission.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
 
+					if (posttype == 1) {
+						oblpost.post(null);
+					} else if (posttype == 2) {
+						oblpost.postsStatusWithDetailsDescription(null, null,
+								null, null, null);
+					}
+				}  else {
+					obllog.logMessage("Error: Publish Permission Not Granted");
+					error.setName("Permission Missing");
+					error.setMessage("Publish Permission Is Not Granted");
+					error.setDescription("");
+					oblpost.fbpostinterface.postingCompleted(false,error);
+				}
+				setPostCheck(false);
+			}
 		}
+		
 
 		if (resultCode == Activity.RESULT_CANCELED) {
 			obllog.logMessage("Login Aborted");
+			error.setName("Login Aborted");
+			error.setMessage("Login Process Cancelled");
+			error.setDescription("");
+			inter.loginResult(false, error);
 		}
 
 		if (session.isOpened()) {
@@ -172,17 +228,13 @@ public class OBLFacebookLogin extends OBLLogin {
 	// Session Change Code
 	private void onSessionStateChange(Session session, SessionState state,
 			Exception exception) {
-		Session.setActiveSession(session);
 		if (state.isOpened()) {
 			obllog.logMessage("Logged In...");
-			if (check == true)
-				check = false;
-			else
-				inter.loginResult(true);
-		} else if (state.isClosed()
-				&& state != SessionState.CLOSED_LOGIN_FAILED) {
+			inter.loginResult(true,null);
+		} else if ((state.isClosed() || state != SessionState.OPENED)
+				&& state != SessionState.CREATED_TOKEN_LOADED) {
 			obllog.logMessage("Logged Out...");
-			inter.loginResult(false);
+			inter.loginResult(false,null);
 		}
 	}
 
@@ -195,7 +247,8 @@ public class OBLFacebookLogin extends OBLLogin {
 
 	public void loginWithPermission(String[] permissions) {
 		session = Session.getActiveSession();
-		obllog.setDebuggingON(true);
+		if (getLoginBehaviour() == SessionLoginBehavior.SSO_ONLY)
+			checkNativeApp();
 		// If Permission is null then do login with basic permission
 		if (permissions.length == 0) {
 			login();
@@ -206,7 +259,6 @@ public class OBLFacebookLogin extends OBLLogin {
 
 			for (int i = 0; i < permissions.length; i++) {
 				if (isPublishPermission(permissions[i])) {
-					check = true;
 					PublishPermission.add(permissions[i]);
 				} else {
 					ReadPermission.add(permissions[i]);
@@ -243,9 +295,9 @@ public class OBLFacebookLogin extends OBLLogin {
 				}
 				if (session.isOpened()) {
 					session.requestNewReadPermissions(new Session.NewPermissionsRequest(
-							activity, NewPermission).setCallback(callback)
-							.setLoginBehavior(getLoginBehaviour())
-							.setRequestCode(REQUEST_CODE_LOGIN_READ));
+							activity, NewPermission).setLoginBehavior(
+							getLoginBehaviour()).setRequestCode(
+							REQUEST_CODE_LOGIN_READ));
 				}
 
 				Session.setActiveSession(session);
@@ -280,9 +332,9 @@ public class OBLFacebookLogin extends OBLLogin {
 				}
 				if (session.isOpened()) {
 					session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
-							activity, NewPermission).setCallback(callback)
-							.setLoginBehavior(getLoginBehaviour())
-							.setRequestCode(REQUEST_CODE_LOGIN_PUBLISH));
+							activity, NewPermission).setLoginBehavior(
+							getLoginBehaviour()).setRequestCode(
+							REQUEST_CODE_LOGIN_PUBLISH));
 				}
 				Session.setActiveSession(session);
 			}
@@ -290,29 +342,30 @@ public class OBLFacebookLogin extends OBLLogin {
 
 	}
 
-	public void resume() {
-		uiHelper.onResume();
-	}
-
-	public void pause() {
-		uiHelper.onPause();
-	}
-
-	public void destroy() {
-		uiHelper.onDestroy();
-	}
-
 	public SessionLoginBehavior getLoginBehaviour() {
 		return loginBehaviour;
 	}
 
-	public void setLoginBehaviour(SessionLoginBehavior loginBehaviour) {
-		this.loginBehaviour = loginBehaviour;
+	public void setLoginBehaviour(String logintype) {
+		if (logintype == ONLY_NATIVE)
+			OBLFacebookLogin.loginBehaviour = SessionLoginBehavior.SSO_ONLY;
+		else if (logintype == ONLY_WEBVIEW)
+			OBLFacebookLogin.loginBehaviour = SessionLoginBehavior.SUPPRESS_SSO;
+		else if (logintype == NATIVE_WEBVIEW)
+			OBLFacebookLogin.loginBehaviour = SessionLoginBehavior.SSO_WITH_FALLBACK;
 	}
 
-	public void saveInstanceState(Bundle outState) {
-		// TODO Auto-generated method stub
-		uiHelper.onSaveInstanceState(outState);
+	public SessionDefaultAudience getDefaultAudience() {
+		return defaultAudience;
+	}
+
+	public void setDefaultAudience(String defaultaudience) {
+		if (defaultaudience == EVERYONE)
+			OBLFacebookLogin.defaultAudience = SessionDefaultAudience.EVERYONE;
+		else if (defaultaudience == FRIENDS)
+			OBLFacebookLogin.defaultAudience = SessionDefaultAudience.FRIENDS;
+		else if (defaultaudience == ONLY_ME)
+			OBLFacebookLogin.defaultAudience = SessionDefaultAudience.ONLY_ME;
 	}
 
 	// Get Session Status(Open Or Closed)
@@ -326,19 +379,48 @@ public class OBLFacebookLogin extends OBLLogin {
 		}
 	}
 
-	public void postlogin(int requestcode) {
-		session = Session.getActiveSession();
+	
 
-		if (session == null
-				|| session.getState() == SessionState.CLOSED_LOGIN_FAILED
-				|| session.getState() == SessionState.CLOSED) {
-			session = new Session(context);
+	public boolean checkNativeApp() {
+		final PackageManager pm = context.getPackageManager();
+		List<ApplicationInfo> packages = pm
+				.getInstalledApplications(PackageManager.GET_META_DATA);
+		for (ApplicationInfo packageInfo : packages) {
+			if (packageInfo.packageName.equals("com.facebook.katana")
+					|| packageInfo.packageName.equals("com.facebook.android")) {
+				return true;
+			}
 		}
-		if (!session.isOpened()) {
-			session.openForPublish(new Session.OpenRequest(activity)
-					.setLoginBehavior(getLoginBehaviour())
-					.setRequestCode(requestcode)
-					.setPermissions("publish_actions"));
+		obllog.logMessage("Native App Not Installed");
+		error.setName("Native App Missing");
+		error.setMessage("Facebook Native App is Missing.");
+		error.setDescription("");
+		inter.loginResult(false, error);
+		return false;
+	}
+
+	public static boolean isPostCheck() {
+		return postcheck;
+	}
+
+	public static void setPostCheck(boolean check) {
+		OBLFacebookLogin.postcheck = check;
+	}
+
+	public static int getPosttype() {
+		return posttype;
+	}
+
+	public static void setPosttype(int posttype) {
+		OBLFacebookLogin.posttype = posttype;
+	}
+
+	public void getpostpermission(int requestcode) {
+		session = Session.getActiveSession();
+		if (session.isOpened()) {
+			session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
+					activity,OBLFacebookPermission.PUBLISH_ACTIONS).setLoginBehavior(
+					getLoginBehaviour()).setRequestCode(requestcode));
 		}
 		Session.setActiveSession(session);
 	}
