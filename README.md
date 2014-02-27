@@ -171,9 +171,9 @@ Profile details:
 
 * `OBLFacebookUser`
   - Refer to **[OBLFacebookUser.java](https://github.com/ObjectLounge/SocialPluginsAndroid/blob/beta/library/Facebook/Classes/OBLFacebookUser.java)**
-  - OBLFacebookUser Class has all profile information of Facebook use
+  - OBLFacebookUser Class has all profile information of Facebook user.
 
 * `OBLFacebookFriend`
   - Refer to **[OBLFacebookFriend.java](https://github.com/ObjectLounge/SocialPluginsAndroid/blob/beta/library/Facebook/Classes/OBLFacebookFriend.java)**
-  - OBLFacebookFriend Class has all profile information of Facebook friend
+  - OBLFacebookFriend Class has all profile information of Facebook friend.
        
