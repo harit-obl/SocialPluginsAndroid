@@ -49,13 +49,14 @@ public class DemoActivity extends Activity implements
 		user.setOnClickListener(this);
 		friend.setOnClickListener(this);
 
-		objlog = new OBLLog();
-		objlog.setDebuggingON(true);
+		
 
+		//Initialize the session and check whether the user is logged in or logged out and update the view accordingly.
 		objlogin = new OBLFacebookLogin(this, this);
 		objlogin.initSession(savedInstanceState);
 		objlogin.setLoginBehaviour(OBLFacebookLogin.NATIVE_WEBVIEW);
 
+		
 		objpost = new OBLFacebookPost(this, this);
 		objquery = new OBLFacebookQuey(this);
 
@@ -68,6 +69,9 @@ public class DemoActivity extends Activity implements
 		objlogin.ActivtyResult(requestCode, resultCode, data);
 	}
 
+	
+	//When the user is loging in or loging out this method is called to notify whether the user is logged in or logged out. 
+	// Error is displayed if occurs during this process.
 	@Override
 	public void loginResult(boolean result,OBLError error) {
 		// TODO Auto-generated method stub
@@ -90,24 +94,45 @@ public class DemoActivity extends Activity implements
 	public void onClick(View arg0) {
 		// TODO Auto-generated method stub
 		if (arg0.getId() == R.id.btn_login) {
-			objlogin.loginWithPermission(new
-			String[]{OBLFacebookPermission.PUBLISH_ACTIONS,OBLFacebookPermission.USER_ABOUT_ME});
+			//To login without permission call login() method of OBLFacebookLogin class.
+			//objlogin.login();
+			
+			/*To login with permission call loginWithPermission(String[] permissions) passing the permissions needed.
+			*Use OBLFacebookPermission class for permissions.
+			**/
+			objlogin.loginWithPermission(new String[]{OBLFacebookPermission.BASIC_INFO,OBLFacebookPermission.PUBLISH_ACTIONS});
+			
 		} else if (arg0.getId() == R.id.btn_logout) {
+			//To logout call logout() method of OBLFacebookLogin class to log out the user.
 			objlogin.logout();
 		} else if (arg0.getId() == R.id.btn_post) {
-			objpost.postsStatusWithDetailsDescription("Share Your Ride",
-					"RideShare Buddy",
-					"Share YOur Ride and decrease pollution",
-					"http://ridesharebuddy.com/ride_images/icon200.png",
-					"http://www.objectlounge.com");
+			// For posting with only message call post(String _status) method of OBLFacebookPost class. 
+			// objpost.post("Post Message");
+			
+			// For Posting with message, title, description, image url and website url use postsStatusWithDetailsDescription() method of OBLFacebookPost class.
+			objpost.postsStatusWithDetailsDescription(
+					"Post Message",//Post Message
+					"Post Title",//Post Title
+					"Post Description",//Post Description
+					"http://ridesharebuddy.com/ride_images/icon200.png",//Image Url
+					"http://www.objectlounge.com");//Website Url
+		
 		} else if (arg0.getId() == R.id.btn_user) {
+			
+			//Call fetchUserProfile() of OBLFacebookQuey class to get the user's detail.
 			objquery.fetchUserProfile();
+			
 		} else if (arg0.getId() == R.id.btn_friend) {
+			
+			//Call allFriends() of OBLFacebookQuey class to get the friends's detail
 			objquery.allFriends();
+		
 		}
 
 	}
 
+	
+	//Checks if the post was successful or not. Error is displayed if it occurs while posting.
 	@Override
 	public void postingCompleted(boolean posted,OBLError error) {
 		// TODO Auto-generated method stub
@@ -123,9 +148,13 @@ public class DemoActivity extends Activity implements
 		}
 	}
 
+	
+	// When the user details are requested, userInfoReceived() method is called and the user object containing the user's details is passed.
 	@Override
-	public void userInfoReceived(OBLFacebookUser user) {
+	public void userInfoReceived(OBLFacebookUser user,OBLError error) {
 		// TODO Auto-generated method stub
+		if (user!=null)
+		{
 		Log.i("First Name:", user.getFirstName());
 		Log.i("Middle Name:", user.getMiddlename());
 		Log.i("Last Name:", user.getLastName());
@@ -136,15 +165,28 @@ public class DemoActivity extends Activity implements
 		Log.i("Email:", user.getEmail());
 		Log.i("Profile Name:", user.getProfileName());
 		Log.i("HomeTown:", user.getHomeTown());
+		}
+		if (error!=null)
+		{
+			Log.i("Error",error.getMessage());
+		}
 	}
 
+	// When the friends details are requested, friendsInfoReceived() method is called and the friends list containing the friend's details is passed.
 	@Override
-	public void friendsInfoReceived(List<OBLFacebookFriend> friends) {
+	public void friendsInfoReceived(List<OBLFacebookFriend> friends,OBLError error) {
 		// TODO Auto-generated method stub
+		if (friends!=null)
+		{
 		for (int i = 0; i < friends.size(); i++) {
 			Log.i("Friends Details", "ID: " + friends.get(i).getsocialMediaId()
 					+ " Name: " + friends.get(i).getname() + " Gender: "
 					+ friends.get(i).getGender());
+		}
+		}
+		if (error !=null)
+		{
+			Log.i("Error",error.getMessage());
 		}
 	}
 

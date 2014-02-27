@@ -1,10 +1,6 @@
 INDEX VERSION 1.126+C:\Users\HARIT-OBJECTLOUNGE\Documents\AndroidProject\SocialPluginsAndroid\Examples\Facebook\.metadata\.plugins\org.eclipse.jdt.core
-683571402.index
-4213368604.index
-2982498061.index
 1361061859.index
 2894446691.index
 3065416851.index
-3723007182.index
-3643704252.index
+2754825396.index
 2040894769.index

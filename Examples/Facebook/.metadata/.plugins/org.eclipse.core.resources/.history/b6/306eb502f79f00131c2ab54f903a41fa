@@ -1,0 +1,10 @@
+package com.example.facebooklibrary;
+
+import android.content.Intent;
+
+public interface OBLFacebookLoginInterface {
+
+
+	public void loginResult(boolean result,OBLError error);
+	
+}

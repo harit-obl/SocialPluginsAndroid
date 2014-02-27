@@ -47,6 +47,8 @@ public class OBLFacebookPost extends OBLPost {
 		error=new OBLError();
 	}
 
+	//Post a feed on User's Profile with the message passed by the user.
+	//_status=message to post.
 	@Override
 	public void post(String _status) {
 		// TODO Auto-generated method stub
@@ -154,6 +156,13 @@ public class OBLFacebookPost extends OBLPost {
 		}
 	}
 
+	
+	//Post a feed on User's Profile with the title, message, description, image url and website url.
+	//_title=Title of the post.
+	//_status=Message of the post.
+	//_description=Description of the post.
+	//_image=Url of the image.
+	//_url=Url of the website.
 	public void postsStatusWithDetailsDescription(String _status,
 			String _title, String _description, String _image, String _url) {
 		if (_status != null)

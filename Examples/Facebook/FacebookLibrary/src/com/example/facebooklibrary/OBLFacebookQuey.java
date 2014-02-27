@@ -21,14 +21,21 @@ public class OBLFacebookQuey {
 	public static Session session;
 	OBLFacebookQueryInterface fbqinterface;
 	OBLLog objlog;
+	OBLError error;
 
 	public OBLFacebookQuey(Activity _activity) {
 		// TODO Auto-generated constructor stub
 		activity = _activity;
-		fbqinterface = (OBLFacebookQueryInterface) activity;
+		//Check whether the calling activity has implemented the OBLFacebookQueryInterface interface.
+		fbqinterface = (OBLFacebookQueryInterface) activity; 
 		objlog = new OBLLog();
+		error=new OBLError();
 	}
 
+	
+	//Fetches The User's Profile Details And Passes it to the The Calling Activity Through OBLFacebookQueryInterface userInfoReceived() method.
+	//If The Permission is not granted it will set "No Permission" to that field. And if the user has not set any field then "Not Available" will be 
+	//displayed.
 	public void fetchUserProfile() {
 
 		session = Session.getActiveSession();
@@ -43,6 +50,9 @@ public class OBLFacebookQuey {
 							if (response.getError() != null) {
 								objlog.logMessage("ERROR: "
 										+ response.getError().toString());
+								error.setName(response.getError().getCategory().toString());
+								error.setMessage(response.getError().getErrorMessage());
+								fbqinterface.userInfoReceived(null, error);
 
 							} else {
 								List<String> permissions = new ArrayList<String>();
@@ -159,7 +169,7 @@ public class OBLFacebookQuey {
 								} else {
 									userprofile.setHomeTown("No Permission");
 								}
-								fbqinterface.userInfoReceived(userprofile);
+								fbqinterface.userInfoReceived(userprofile,null);
 							}
 						}
 
@@ -170,13 +180,20 @@ public class OBLFacebookQuey {
 		else
 		{
 			objlog.logMessage("You are currently logged out.");
+			error.setName("Logged Out");
+			error.setMessage("You are currently logged out.");
+			error.setDescription("Please Login Again To See User Details");
+			fbqinterface.userInfoReceived(null, error);
 		}
 
 	}
 
+	//Fetches the User's Friends Detail.
 	public void allFriends() {
+		
 		session = Session.getActiveSession();
 		final List<OBLFacebookFriend> friendlist = new ArrayList<OBLFacebookFriend>();
+		
 		if (session.isOpened()) {
 			Request request = Request.newMyFriendsRequest(session,
 					new Request.GraphUserListCallback() {
@@ -185,18 +202,21 @@ public class OBLFacebookQuey {
 						public void onCompleted(List<GraphUser> users,
 								Response response) {
 							// TODO Auto-generated method stub
-						
+							
 							if (response.getError() != null) {
-
 								objlog.logMessage("ERROR: "
 										+ response.getError().toString());
+								error.setName(response.getError().getCategory().toString());
+								error.setMessage(response.getError().getErrorMessage());
+								fbqinterface.userInfoReceived(null, error);
 							} else {
 								for (int cnt = 0; cnt < users.size(); cnt++) {
 									friendlist.add(new OBLFacebookFriend(users
 											.get(cnt).getId(), users.get(cnt)
 											.getName(),users.get(cnt).getProperty("gender").toString()));
 								}
-								fbqinterface.friendsInfoReceived(friendlist);
+								fbqinterface.friendsInfoReceived(friendlist,null);
+								
 							}
 						}
 
@@ -207,9 +227,13 @@ public class OBLFacebookQuey {
 			request.executeAsync();
 
 		}
-		else
+		else	//If Session is Closed
 		{
 			objlog.logMessage("You are currently logged out.");
+			error.setName("Logged Out");
+			error.setMessage("You are currently logged out.");
+			error.setDescription("Please Login Again To See Friends Details");
+			fbqinterface.friendsInfoReceived(null, error);
 		}
 	}
 

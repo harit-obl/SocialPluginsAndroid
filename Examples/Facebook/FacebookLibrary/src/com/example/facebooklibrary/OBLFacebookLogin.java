@@ -9,8 +9,8 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+
 import com.facebook.Session;
-import com.facebook.SessionDefaultAudience;
 import com.facebook.SessionLoginBehavior;
 import com.facebook.SessionState;
 
@@ -22,13 +22,9 @@ public class OBLFacebookLogin extends OBLLogin {
 	private Context context;
 	private Activity activity;
 	private static SessionLoginBehavior loginBehaviour = SessionLoginBehavior.SSO_WITH_FALLBACK;
-	private static SessionDefaultAudience defaultAudience = SessionDefaultAudience.EVERYONE;
 	public static final String ONLY_NATIVE = "native";
 	public static final String ONLY_WEBVIEW = "webview";
 	public static final String NATIVE_WEBVIEW = "both";
-	public static final String EVERYONE = "everyone";
-	public static final String FRIENDS = "friends";
-	public static final String ONLY_ME = "onlyme";
 	private static final String PUBLISH_PERMISSION_PREFIX = "publish";
 	private static final String MANAGE_PERMISSION_PREFIX = "manage";
 	public static final int REQUEST_CODE_LOGIN = 199188;
@@ -38,14 +34,20 @@ public class OBLFacebookLogin extends OBLLogin {
 	OBLFacebookLoginInterface inter;
 	OBLFacebookPost oblpost;
 	OBLError error;
-	public static boolean postcheck = false;
-	public static int posttype = 0;
+	public static boolean postcheck = false; // Used when login is required
+												// while posting.
+	public static int posttype = 0; // Check whether the user has called for
+									// loging from post() or
+									// postsStatusWithDetailsDescription().
 
 	public OBLFacebookLogin(Context _context, Activity _activity) {
 		this.context = _context;
 		this.activity = _activity;
 		obllog = new OBLLog();
 		error = new OBLError();
+		
+		// Check if the activity has implemented the OBLFacebookLoginInterface
+		// interface.
 		try {
 			inter = (OBLFacebookLoginInterface) activity;
 		} catch (ClassCastException e) {
@@ -55,7 +57,11 @@ public class OBLFacebookLogin extends OBLLogin {
 		}
 	}
 
-	// Initialize (Start) Session
+	// Initialize (Start) Session.
+	// This method restores the session from previous stored state if available
+	// or creates a new instance of session.
+	// Call this method on start to check whether the user is logged in or
+	// logged out.
 	public Session initSession(Bundle savedInstanceState) {
 
 		session = Session.getActiveSession();
@@ -76,6 +82,8 @@ public class OBLFacebookLogin extends OBLLogin {
 		return session;
 	}
 
+	// This method gets the user logged in without any permission(basic
+	// permissions which are default will be asked).
 	@Override
 	public void login() {
 		session = Session.getActiveSession();
@@ -95,6 +103,15 @@ public class OBLFacebookLogin extends OBLLogin {
 		Session.setActiveSession(session);
 	}
 
+	// Handles the result of loging process and updates the session according to
+	// the result.
+	// @param requestCode= The requestCode parameter from the forwarded call
+	// @param resultCode= An int containing the resultCode parameter from the
+	// forwarded call.
+	// @param data= The Intent passed as the data parameter from the forwarded
+	// call.
+	// @return= A boolean indicating whether the requestCode matched a pending
+	// authorization request for this Session.
 	public boolean ActivtyResult(int requestCode, int resultCode, Intent data) {
 		Session.getActiveSession().onActivityResult(activity, requestCode,
 				resultCode, data);
@@ -142,7 +159,8 @@ public class OBLFacebookLogin extends OBLLogin {
 					if (isPostCheck()) {
 						oblpost = new OBLFacebookPost(context, activity);
 						NewPermission = session.getPermissions();
-						if (NewPermission.contains("publish_actions")) {
+						if (NewPermission
+								.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
 
 							if (posttype == 1) {
 								oblpost.post(null);
@@ -166,8 +184,10 @@ public class OBLFacebookLogin extends OBLLogin {
 
 		}
 
+		// Check When the publish permission are requested, whether the user accepted or cancelled the publish permission 
 		if (requestCode == REQUEST_CODE_LOGIN_PUBLISH
 				&& resultCode == Activity.RESULT_OK) {
+			// 
 			if (isPostCheck()) {
 				oblpost = new OBLFacebookPost(context, activity);
 				NewPermission = session.getPermissions();
@@ -191,11 +211,15 @@ public class OBLFacebookLogin extends OBLLogin {
 			}
 		}
 
-		if (resultCode == Activity.RESULT_CANCELED) {
+		// If the user cancels the loging process or it gets cancelled due to some another reason.
+		if (resultCode == Activity.RESULT_CANCELED ) {
 			obllog.logMessage("Login Aborted");
 			error.setName("Login Aborted");
 			error.setMessage("Login Process Cancelled");
 			error.setDescription("");
+			if (session.isOpened())
+			inter.loginResult(true, error);
+			else
 			inter.loginResult(false, error);
 		}
 
@@ -206,6 +230,7 @@ public class OBLFacebookLogin extends OBLLogin {
 		}
 	}
 
+	// Call this method to log out of user's account.
 	@Override
 	public boolean logout() {
 		Session session = Session.getActiveSession();
@@ -221,7 +246,9 @@ public class OBLFacebookLogin extends OBLLogin {
 		return false;
 	}
 
-	// Session Change Code
+	// This method is used whenever the state of session changes and it checks
+	// whether the session is opened or closed. It passes the result to the
+	// user using the loginResult() method of OBLFacebookLoginInterface
 	private void onSessionStateChange(Session session, SessionState state,
 			Exception exception) {
 		if (state.isOpened()) {
@@ -234,6 +261,8 @@ public class OBLFacebookLogin extends OBLLogin {
 		}
 	}
 
+	// Check if the permission is a Read Permission or a Publish Permission.
+	// @permission= permission to check for.
 	public static boolean isPublishPermission(String permission) {
 		return permission != null
 				&& (permission.startsWith(PUBLISH_PERMISSION_PREFIX) || permission
@@ -241,6 +270,12 @@ public class OBLFacebookLogin extends OBLLogin {
 
 	}
 
+	// This method is used to log in the user with permissions specified. Read
+	// and Publish permission can be given together.
+	// It will first login with only Read Permission and then request for
+	// publish permission.
+	// If now permissions are passed then it will call the login() method.
+	// @params permissions= Array of permissions which are needed when loging.
 	public void loginWithPermission(String[] permissions) {
 		session = Session.getActiveSession();
 		if (getLoginBehaviour() == SessionLoginBehavior.SSO_ONLY)
@@ -317,14 +352,20 @@ public class OBLFacebookLogin extends OBLLogin {
 				}
 
 				if (session == null
-						|| session.getState() == SessionState.CLOSED_LOGIN_FAILED) {
+						|| session.getState() == SessionState.CLOSED_LOGIN_FAILED || session.getState() == SessionState.CLOSED ) {
 					session = new Session(context);
 				}
 				if (!session.isOpened()) {
-					session.openForPublish(new Session.OpenRequest(activity)
-							.setLoginBehavior(getLoginBehaviour())
-							.setPermissions(NewPermission)
-							.setRequestCode(REQUEST_CODE_LOGIN_PUBLISH));
+					//Cannot Login with only publish permission. Ask For basic read Permission first and then login with publish permission.
+					NewPermission.add(OBLFacebookPermission.BASIC_INFO);
+					String[] temppermissions=new String[NewPermission.size()];
+					for (int i=0;i<NewPermission.size();i++)
+					{
+						temppermissions[i]=NewPermission.get(i);
+					}
+					setPostCheck(true);
+					setPosttype(0);
+					loginWithPermission(temppermissions);
 				}
 				if (session.isOpened()) {
 					session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
@@ -338,10 +379,18 @@ public class OBLFacebookLogin extends OBLLogin {
 
 	}
 
+	// Get the Login Behaviour.
 	public SessionLoginBehavior getLoginBehaviour() {
 		return loginBehaviour;
 	}
 
+	// Set the Login Behaviour.
+	// @params logintype= ONLY_NATIVE will do loging using the native app only.
+	// If the native app is not available then it will not proceed.
+	// ONLY_WEBVIEW will do loging using the Webview only. If the native app is
+	// available then also it will use webview.
+	// NATIVE_WEBVIEW will do loging using native app if available else it will
+	// use Webview
 	public void setLoginBehaviour(String logintype) {
 		if (logintype == ONLY_NATIVE)
 			OBLFacebookLogin.loginBehaviour = SessionLoginBehavior.SSO_ONLY;
@@ -351,20 +400,8 @@ public class OBLFacebookLogin extends OBLLogin {
 			OBLFacebookLogin.loginBehaviour = SessionLoginBehavior.SSO_WITH_FALLBACK;
 	}
 
-	public SessionDefaultAudience getDefaultAudience() {
-		return defaultAudience;
-	}
-
-	public void setDefaultAudience(String defaultaudience) {
-		if (defaultaudience == EVERYONE)
-			OBLFacebookLogin.defaultAudience = SessionDefaultAudience.EVERYONE;
-		else if (defaultaudience == FRIENDS)
-			OBLFacebookLogin.defaultAudience = SessionDefaultAudience.FRIENDS;
-		else if (defaultaudience == ONLY_ME)
-			OBLFacebookLogin.defaultAudience = SessionDefaultAudience.ONLY_ME;
-	}
-
-	// Get Session Status(Open Or Closed)
+	// Get Session Status(Open Or Closed). Returns true if session is open or
+	// false if session is closed.
 	public boolean getStatus() {
 		session = Session.getActiveSession();
 		if (session.isOpened()
@@ -375,6 +412,10 @@ public class OBLFacebookLogin extends OBLLogin {
 		}
 	}
 
+	// This method is used to check if the native app is installed on the user
+	// device.
+	// @params boolean= returns true if the native app is installed or false if
+	// not installed.
 	public boolean checkNativeApp() {
 		final PackageManager pm = context.getPackageManager();
 		List<ApplicationInfo> packages = pm
@@ -409,6 +450,8 @@ public class OBLFacebookLogin extends OBLLogin {
 		OBLFacebookLogin.posttype = posttype;
 	}
 
+	// If publish permission is not given then this method is used to request
+	// publish permission when session is open.
 	public void getpostpermission(int requestcode) {
 		session = Session.getActiveSession();
 		if (session.isOpened()) {
