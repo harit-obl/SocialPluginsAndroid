@@ -1,4 +1,4 @@
-package com.example.facebooklibrary;
+package com.objectlounge.facebooklibrary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.facebook.Session;
 import com.facebook.SessionLoginBehavior;
@@ -21,31 +22,42 @@ public class OBLFacebookLogin extends OBLLogin {
 	private Session session;
 	private Context context;
 	private Activity activity;
+	// Login Behavior
 	private static SessionLoginBehavior loginBehaviour = SessionLoginBehavior.SSO_WITH_FALLBACK;
+	// Login Behaviour Constants
 	public static final String ONLY_NATIVE = "native";
 	public static final String ONLY_WEBVIEW = "webview";
 	public static final String NATIVE_WEBVIEW = "both";
+	// Prefix Constants
 	private static final String PUBLISH_PERMISSION_PREFIX = "publish";
 	private static final String MANAGE_PERMISSION_PREFIX = "manage";
+	// Request Id Constants
 	public static final int REQUEST_CODE_LOGIN = 199188;
 	public static final int REQUEST_CODE_LOGIN_READ = 199187;
 	public static final int REQUEST_CODE_LOGIN_PUBLISH = 199189;
+	// Object Of Classes
 	OBLLog obllog;
 	OBLFacebookLoginInterface inter;
 	OBLFacebookPost oblpost;
 	OBLError error;
+	// Check Variables
 	public static boolean postcheck = false; // Used when login is required
 												// while posting.
 	public static int posttype = 0; // Check whether the user has called for
 									// loging from post() or
 									// postsStatusWithDetailsDescription().
+	public boolean nativeAppAvail;
+	private static ArrayList<String> mandate_Permission = new ArrayList<String>();
+	private static ArrayList<String> optional_Permission = new ArrayList<String>();
 
 	public OBLFacebookLogin(Context _context, Activity _activity) {
 		this.context = _context;
 		this.activity = _activity;
 		obllog = new OBLLog();
 		error = new OBLError();
-		
+		session = new Session(context);
+		session = Session.getActiveSession();
+
 		// Check if the activity has implemented the OBLFacebookLoginInterface
 		// interface.
 		try {
@@ -87,23 +99,27 @@ public class OBLFacebookLogin extends OBLLogin {
 	@Override
 	public void login() {
 		session = Session.getActiveSession();
+		nativeAppAvail = true;
+		// Check Native App is installed if login behavior is set to SSO only.
 		if (getLoginBehaviour() == SessionLoginBehavior.SSO_ONLY)
-			checkNativeApp();
+			nativeAppAvail = checkNativeApp();
 
-		if (session == null
-				|| session.getState() == SessionState.CLOSED_LOGIN_FAILED
-				|| session.getState() == SessionState.CLOSED) {
-			session = new Session(context);
+		if (nativeAppAvail) {
+			if (session == null
+					|| session.getState() == SessionState.CLOSED_LOGIN_FAILED
+					|| session.getState() == SessionState.CLOSED) {
+				session = new Session(context);
+			}
+			if (!session.isOpened()) {
+				session.openForRead(new Session.OpenRequest(activity)
+						.setLoginBehavior(getLoginBehaviour()).setRequestCode(
+								REQUEST_CODE_LOGIN));
+			}
+			Session.setActiveSession(session);
 		}
-		if (!session.isOpened()) {
-			session.openForRead(new Session.OpenRequest(activity)
-					.setLoginBehavior(getLoginBehaviour()).setRequestCode(
-							REQUEST_CODE_LOGIN));
-		}
-		Session.setActiveSession(session);
 	}
 
-	// Handles the result of loging process and updates the session according to
+	// Handles the result of login process and updates the session according to
 	// the result.
 	// @param requestCode= The requestCode parameter from the forwarded call
 	// @param resultCode= An int containing the resultCode parameter from the
@@ -113,113 +129,177 @@ public class OBLFacebookLogin extends OBLLogin {
 	// @return= A boolean indicating whether the requestCode matched a pending
 	// authorization request for this Session.
 	public boolean ActivtyResult(int requestCode, int resultCode, Intent data) {
-		Session.getActiveSession().onActivityResult(activity, requestCode,
-				resultCode, data);
 
+		
 		session = Session.getActiveSession();
+		if (session == null) {
+			if (requestCode == REQUEST_CODE_LOGIN)
+				login();
+		} else {
 
-		if (resultCode == Activity.RESULT_OK && session.isOpened()) {
-			onSessionStateChange(session, session.getState(), null);
+			session.onActivityResult(this.activity, requestCode, resultCode,
+					data);
+		}
+
+		
+		if (resultCode == Activity.RESULT_OK && session.isOpened()
+				&& requestCode == REQUEST_CODE_LOGIN) {
+			// onSessionStateChange(session, session.getState(), null);
+			inter.loginResult(true, null);
 		}
 
 		if (requestCode == REQUEST_CODE_LOGIN_READ
 				&& resultCode == Activity.RESULT_OK) {
-			if (PublishPermission.size() != 0) {
-				OldPermission = new ArrayList<String>();
-				NewPermission = new ArrayList<String>();
-
-				// Get Already Accepted Permissions
-				if (session != null) {
-					OldPermission = session.getPermissions();
+			List<String> acceptedPermission = new ArrayList<String>();
+			
+			acceptedPermission = session.getPermissions();
+			boolean check_mandate = true;
+			
+			for (int i = 0; i < mandate_Permission.size(); i++) {
+				if (!acceptedPermission.contains(mandate_Permission.get(i))
+						&& !mandate_Permission.get(i).equals(
+								OBLFacebookPermission.PUBLISH_ACTIONS)) {
+					error.setName("Permission Missing");
+					error.setMessage("Permission Is Needed For Using This App.");
+					error.setDescription("");
+					inter.loginResult(false, error);
+					check_mandate = false;
+					break;
 				}
-				// Store New Needed Permissions
-				for (int i = 0; i < PublishPermission.size(); i++) {
-					if (!OldPermission.contains(PublishPermission.get(i))) {
-						NewPermission.add(PublishPermission.get(i));
-					}
-				}
-				if (NewPermission.size() != 0) {
-					if (session == null
-							|| session.getState() == SessionState.CLOSED_LOGIN_FAILED) {
-						session = new Session(context);
-					}
-					if (!session.isOpened()) {
-						session.openForPublish(new Session.OpenRequest(activity)
-								.setLoginBehavior(getLoginBehaviour())
-								.setPermissions(NewPermission)
-								.setRequestCode(REQUEST_CODE_LOGIN_PUBLISH));
-					}
-					if (session.isOpened()) {
-						session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
-								activity, NewPermission).setLoginBehavior(
-								getLoginBehaviour()).setRequestCode(
-								REQUEST_CODE_LOGIN_PUBLISH));
-					}
-				} else {
-					if (isPostCheck()) {
-						oblpost = new OBLFacebookPost(context, activity);
-						NewPermission = session.getPermissions();
-						if (NewPermission
-								.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
+			}
+			if (check_mandate) {
+				if (PublishPermission.size() != 0) {
 
-							if (posttype == 1) {
-								oblpost.post(null);
-							} else if (posttype == 2) {
-								oblpost.postsStatusWithDetailsDescription(null,
-										null, null, null, null);
-							}
-						} else {
-							obllog.logMessage("Error: Publish Permission Not Granted");
-							error.setName("Permission Missing");
-							error.setMessage("Publish Permission Is Not Granted");
-							error.setDescription("");
-							oblpost.fbpostinterface.postingCompleted(false,
-									error);
+					NewPermission = new ArrayList<String>();
+					OldPermission = new ArrayList<String>();
+
+					// Get Already Accepted Permissions
+					if (session != null) {
+						OldPermission = session.getPermissions();
+					}
+
+					// Store New Needed Permissions
+					for (int i = 0; i < PublishPermission.size(); i++) {
+						if (!OldPermission.contains(PublishPermission.get(i))) {
+							NewPermission.add(PublishPermission.get(i));
 						}
-						setPostCheck(false);
 					}
+
+					
+					if (NewPermission.size() != 0) {
+						if (session == null
+								|| session.getState() == SessionState.CLOSED_LOGIN_FAILED) {
+							session = new Session(context);
+						}
+						if (!session.isOpened()) {
+							session.openForPublish(new Session.OpenRequest(
+									activity)
+									.setLoginBehavior(getLoginBehaviour())
+									.setPermissions(NewPermission)
+									.setRequestCode(REQUEST_CODE_LOGIN_PUBLISH));
+						}
+						if (session.isOpened()) {
+							session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
+									activity, NewPermission).setLoginBehavior(
+									getLoginBehaviour()).setRequestCode(
+									REQUEST_CODE_LOGIN_PUBLISH));
+						}
+					}else {
+						if (isPostCheck()) {
+							oblpost = new OBLFacebookPost(context, activity);
+							NewPermission = session.getPermissions();
+							if (NewPermission
+									.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
+
+								if (posttype == 1) {
+									oblpost.post(null);
+								} else if (posttype == 2) {
+									oblpost.postsStatusWithDetailsDescription(
+											null, null, null, null, null);
+								}
+							} else {
+								obllog.logMessage("Error: Publish Permission Not Granted");
+								error.setName("Permission Missing");
+								error.setMessage("Publish Permission Is Not Granted");
+								error.setDescription("");
+								oblpost.fbpostinterface.postingCompleted(false,
+										error);
+							}
+							setPostCheck(false);
+						}
+						else
+						{
+							inter.loginResult(true, null);
+						}
+					}
+
+				} else {
+					inter.loginResult(true, null);
 				}
+			} else {
 
 			}
 
 		}
 
-		// Check When the publish permission are requested, whether the user accepted or cancelled the publish permission 
+		// Check When the publish permission are requested, whether the user
+		// accepted or cancelled the publish permission
 		if (requestCode == REQUEST_CODE_LOGIN_PUBLISH
 				&& resultCode == Activity.RESULT_OK) {
-			// 
-			if (isPostCheck()) {
-				oblpost = new OBLFacebookPost(context, activity);
-				NewPermission = session.getPermissions();
-				if (NewPermission
-						.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
-
-					if (posttype == 1) {
-						oblpost.post(null);
-					} else if (posttype == 2) {
-						oblpost.postsStatusWithDetailsDescription(null, null,
-								null, null, null);
-					}
-				} else {
-					obllog.logMessage("Error: Publish Permission Not Granted");
+			//
+			List<String> acceptedPermission = new ArrayList<String>();
+			acceptedPermission = session.getPermissions();
+			boolean check_mandate = true;
+			for (int i = 0; i < mandate_Permission.size(); i++) {
+				if (!acceptedPermission.contains(mandate_Permission.get(i))) {
 					error.setName("Permission Missing");
-					error.setMessage("Publish Permission Is Not Granted");
+					error.setMessage("Permission Is Needed For Using This App.");
 					error.setDescription("");
-					oblpost.fbpostinterface.postingCompleted(false, error);
+					inter.loginResult(false, error);
+					check_mandate = false;
+					break;
 				}
-				setPostCheck(false);
+			}
+			if (check_mandate) {
+				if (isPostCheck()) {
+				
+					NewPermission = session.getPermissions();
+					if (NewPermission
+							.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
+
+						if (posttype == 1) {
+							oblpost = new OBLFacebookPost(context, activity);
+							oblpost.post(null);
+						} else if (posttype == 2) {
+							oblpost = new OBLFacebookPost(context, activity);
+							oblpost.postsStatusWithDetailsDescription(null,
+									null, null, null, null);
+						}
+						else if (posttype==0)
+						{
+							inter.loginResult(true, null);
+						}
+					} else {
+						obllog.logMessage("Error: Publish Permission Not Granted");
+						error.setName("Permission Missing");
+						error.setMessage("Publish Permission Is Not Granted");
+						error.setDescription("");
+						oblpost.fbpostinterface.postingCompleted(false, error);
+					}
+					setPostCheck(false);
+				} else {
+					inter.loginResult(true, null);
+				}
 			}
 		}
 
-		// If the user cancels the loging process or it gets cancelled due to some another reason.
-		if (resultCode == Activity.RESULT_CANCELED ) {
+		// If the user cancels the login process or it gets cancelled due to
+		// some another reason.
+		if (resultCode == Activity.RESULT_CANCELED) {
 			obllog.logMessage("Login Aborted");
 			error.setName("Login Aborted");
 			error.setMessage("Login Process Cancelled");
 			error.setDescription("");
-			if (session.isOpened())
-			inter.loginResult(true, error);
-			else
 			inter.loginResult(false, error);
 		}
 
@@ -234,16 +314,17 @@ public class OBLFacebookLogin extends OBLLogin {
 	@Override
 	public boolean logout() {
 		Session session = Session.getActiveSession();
-		if (!session.isClosed()) {
+		if (session != null) {
 			session.closeAndClearTokenInformation();
 			session = new Session(context);
 			Session.setActiveSession(Session.getActiveSession());
 			onSessionStateChange(session, session.getState(), null);
-			return true;
+			Session.setActiveSession(session);
 		}
-		Session.setActiveSession(session);
-		onSessionStateChange(session, session.getState(), null);
-		return false;
+
+		// onSessionStateChange(Session.getActiveSession(),
+		// Session.getActiveSession().getState(), null);
+		return true;
 	}
 
 	// This method is used whenever the state of session changes and it checks
@@ -253,11 +334,11 @@ public class OBLFacebookLogin extends OBLLogin {
 			Exception exception) {
 		if (state.isOpened()) {
 			obllog.logMessage("Logged In...");
-			inter.loginResult(true, null);
+			// inter.loginResult(true, null);
 		} else if ((state.isClosed() || state != SessionState.OPENED)
 				&& state != SessionState.CREATED_TOKEN_LOADED) {
 			obllog.logMessage("Logged Out...");
-			inter.loginResult(false, null);
+			// inter.loginResult(false, null);
 		}
 	}
 
@@ -274,109 +355,125 @@ public class OBLFacebookLogin extends OBLLogin {
 	// and Publish permission can be given together.
 	// It will first login with only Read Permission and then request for
 	// publish permission.
-	// If now permissions are passed then it will call the login() method.
+	// If no permissions are passed then it will call the login() method.
 	// @params permissions= Array of permissions which are needed when loging.
-	public void loginWithPermission(String[] permissions) {
+	public void loginWithPermission(String[] mandate, String[] optional) {
+
 		session = Session.getActiveSession();
+
+		nativeAppAvail = true;
 		if (getLoginBehaviour() == SessionLoginBehavior.SSO_ONLY)
-			checkNativeApp();
-		// If Permission is null then do login with basic permission
-		if (permissions.length == 0) {
-			login();
-		} else {
-			// Divide the Read and Publish Permissions
-			ReadPermission = new ArrayList<String>();
-			PublishPermission = new ArrayList<String>();
+			nativeAppAvail = checkNativeApp();
 
-			for (int i = 0; i < permissions.length; i++) {
-				if (isPublishPermission(permissions[i])) {
-					PublishPermission.add(permissions[i]);
-				} else {
-					ReadPermission.add(permissions[i]);
-				}
+		if (nativeAppAvail) {
+			// If Permission is null then do login with basic permission
+			if (mandate == null) {
+				mandate = new String[0];
 			}
 
-			// Get Active Session
-
-			if (ReadPermission.size() != 0) {
-				OldPermission = new ArrayList<String>();
-				NewPermission = new ArrayList<String>();
-
-				// Get Already Accepted Permissions
-				if (session != null) {
-					OldPermission = session.getPermissions();
-				}
-				// Store New Needed Permissions
-				for (int i = 0; i < ReadPermission.size(); i++) {
-					if (!OldPermission.contains(ReadPermission.get(i))) {
-						NewPermission.add(ReadPermission.get(i));
-					}
-				}
-
-				if (session == null
-						|| session.getState() == SessionState.CLOSED_LOGIN_FAILED
-						|| session.getState() == SessionState.CLOSED) {
-					session = new Session(context);
-				}
-				if (!session.isOpened()) {
-					session.openForRead(new Session.OpenRequest(activity)
-							.setLoginBehavior(getLoginBehaviour())
-							.setPermissions(NewPermission)
-							.setRequestCode(REQUEST_CODE_LOGIN_READ));
-				}
-				if (session.isOpened()) {
-					session.requestNewReadPermissions(new Session.NewPermissionsRequest(
-							activity, NewPermission).setLoginBehavior(
-							getLoginBehaviour()).setRequestCode(
-							REQUEST_CODE_LOGIN_READ));
-				}
-
-				Session.setActiveSession(session);
+			if (optional == null) {
+				optional = new String[0];
 			}
+			mandate_Permission.clear();
+			optional_Permission.clear();
+			if (mandate.length == 0 && optional.length == 0) {
+				login();
+			} else {
+				// Divide the Read and Publish Permissions
+				ReadPermission = new ArrayList<String>();
+				PublishPermission = new ArrayList<String>();
 
-			else // if Read Permission is null then login with publish
-					// permission.
-			{
-				OldPermission = new ArrayList<String>();
-				NewPermission = new ArrayList<String>();
-
-				// Get Already Accepted Permissions
-				if (session != null) {
-					OldPermission = session.getPermissions();
-				}
-				// Store New Needed Permissions
-				for (int i = 0; i < PublishPermission.size(); i++) {
-					if (!OldPermission.contains(PublishPermission.get(i))) {
-						NewPermission.add(PublishPermission.get(i));
+				for (int i = 0; i < mandate.length; i++) {
+					if (isPublishPermission(mandate[i])) {
+						PublishPermission.add(mandate[i]);
+					} else {
+						ReadPermission.add(mandate[i]);
 					}
+					mandate_Permission.add(mandate[i]);
+				}
+				
+				for (int i = 0; i < optional.length; i++) {
+					if (isPublishPermission(optional[i])) {
+						PublishPermission.add(optional[i]);
+					} else {
+						ReadPermission.add(optional[i]);
+					}
+					optional_Permission.add(optional[i]);
+				}
+				
+				// Get Active Session
+
+				if (ReadPermission.size() != 0) {
+
+
+					if (session == null
+							|| session.getState() == SessionState.CLOSED_LOGIN_FAILED
+							|| session.getState() == SessionState.CLOSED) {
+						session = new Session(context);
+					}
+					if (!session.isOpened()) {
+						session.openForRead(new Session.OpenRequest(activity)
+								.setLoginBehavior(getLoginBehaviour())
+								.setPermissions(ReadPermission)
+								.setRequestCode(REQUEST_CODE_LOGIN_READ));
+					}
+					if (session.isOpened()) {
+						session.requestNewReadPermissions(new Session.NewPermissionsRequest(
+								activity, ReadPermission).setLoginBehavior(
+								getLoginBehaviour()).setRequestCode(
+								REQUEST_CODE_LOGIN_READ));
+					}
+
+					Session.setActiveSession(session);
 				}
 
-				if (session == null
-						|| session.getState() == SessionState.CLOSED_LOGIN_FAILED || session.getState() == SessionState.CLOSED ) {
-					session = new Session(context);
-				}
-				if (!session.isOpened()) {
-					//Cannot Login with only publish permission. Ask For basic read Permission first and then login with publish permission.
-					NewPermission.add(OBLFacebookPermission.BASIC_INFO);
-					String[] temppermissions=new String[NewPermission.size()];
-					for (int i=0;i<NewPermission.size();i++)
-					{
-						temppermissions[i]=NewPermission.get(i);
+				else // if Read Permission is null then login with publish
+						// permission.
+				{
+					OldPermission = new ArrayList<String>();
+					NewPermission = new ArrayList<String>();
+
+					// Get Already Accepted Permissions
+					if (session != null) {
+						OldPermission = session.getPermissions();
 					}
-					setPostCheck(true);
-					setPosttype(0);
-					loginWithPermission(temppermissions);
+					// Store New Needed Permissions
+					for (int i = 0; i < PublishPermission.size(); i++) {
+						if (!OldPermission.contains(PublishPermission.get(i))) {
+							NewPermission.add(PublishPermission.get(i));
+						}
+					}
+
+					if (session == null
+							|| session.getState() == SessionState.CLOSED_LOGIN_FAILED
+							|| session.getState() == SessionState.CLOSED) {
+						session = new Session(context);
+					}
+					if (!session.isOpened()) {
+						// Cannot Login with only publish permission. Ask For
+						// basic
+						// read Permission first and then login with publish
+						// permission.
+						NewPermission.add(OBLFacebookPermission.BASIC_INFO);
+						String[] temppermissions = new String[NewPermission
+								.size()];
+						for (int i = 0; i < NewPermission.size(); i++) {
+							temppermissions[i] = NewPermission.get(i);
+						}
+						setPostCheck(true);
+						setPosttype(0);
+						loginWithPermission(temppermissions, null);
+					}
+					if (session.isOpened()) {
+						session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
+								activity, NewPermission).setLoginBehavior(
+								getLoginBehaviour()).setRequestCode(
+								REQUEST_CODE_LOGIN_PUBLISH));
+					}
+					Session.setActiveSession(session);
 				}
-				if (session.isOpened()) {
-					session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
-							activity, NewPermission).setLoginBehavior(
-							getLoginBehaviour()).setRequestCode(
-							REQUEST_CODE_LOGIN_PUBLISH));
-				}
-				Session.setActiveSession(session);
 			}
 		}
-
 	}
 
 	// Get the Login Behaviour.
@@ -403,6 +500,7 @@ public class OBLFacebookLogin extends OBLLogin {
 	// Get Session Status(Open Or Closed). Returns true if session is open or
 	// false if session is closed.
 	public boolean getStatus() {
+
 		session = Session.getActiveSession();
 		if (session.isOpened()
 				|| session.getState() == SessionState.CREATED_TOKEN_LOADED) {
@@ -455,11 +553,16 @@ public class OBLFacebookLogin extends OBLLogin {
 	public void getpostpermission(int requestcode) {
 		session = Session.getActiveSession();
 		if (session.isOpened()) {
+			ArrayList<String> publishPermission = new ArrayList<String>();
+			publishPermission.add(OBLFacebookPermission.PUBLISH_ACTIONS);
 			session.requestNewPublishPermissions(new Session.NewPermissionsRequest(
-					activity, OBLFacebookPermission.PUBLISH_ACTIONS)
-					.setLoginBehavior(getLoginBehaviour()).setRequestCode(
-							requestcode));
+					activity, publishPermission).setLoginBehavior(
+					getLoginBehaviour()).setRequestCode(requestcode));
 		}
 		Session.setActiveSession(session);
+	}
+
+	public void checkPermission() {
+
 	}
 }
