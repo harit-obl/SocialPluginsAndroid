@@ -1,0 +1,42 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center" >
+
+   <Button
+       android:layout_width="wrap_content"	
+       android:layout_height="wrap_content"
+       android:id="@+id/btn_login"
+       android:text="Login"
+       />
+   
+   <Button
+       android:layout_width="wrap_content"	
+       android:layout_height="wrap_content"
+       android:id="@+id/btn_logout"
+       android:text="Log Out"
+       />
+   
+   <Button
+       android:layout_width="wrap_content"	
+       android:layout_height="wrap_content"
+       android:id="@+id/btn_post"
+       android:text="Post"
+       />
+   
+    <Button
+       android:layout_width="wrap_content"	
+       android:layout_height="wrap_content"
+       android:id="@+id/btn_user"
+       android:text="User Detail"
+       />
+     <Button
+       android:layout_width="wrap_content"	
+       android:layout_height="wrap_content"
+       android:id="@+id/btn_friend"
+       android:text="Friends Detail"
+       />
+
+</LinearLayout>

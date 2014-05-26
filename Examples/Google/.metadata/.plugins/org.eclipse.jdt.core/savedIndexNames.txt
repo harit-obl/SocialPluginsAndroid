@@ -1,0 +1,5 @@
+INDEX VERSION 1.126+C:\Users\Aashish_ObjectLounge\Documents\Android Projects\SocialPluginsAndroid\Examples\Google\.metadata\.plugins\org.eclipse.jdt.core
+618672944.index
+1154953220.index
+848856923.index
+645064058.index
