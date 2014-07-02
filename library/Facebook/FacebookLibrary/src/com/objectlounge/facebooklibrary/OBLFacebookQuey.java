@@ -62,6 +62,7 @@ public class OBLFacebookQuey {
 								userprofile = new OBLFacebookUser();
 
 								// if (permissions.contains("public_profile")) {
+							
 								if (user.getId() == null) {
 									userprofile
 											.setsocialMediaId("Not Available");

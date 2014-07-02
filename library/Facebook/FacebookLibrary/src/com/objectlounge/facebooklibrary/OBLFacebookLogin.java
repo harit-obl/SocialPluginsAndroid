@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.facebook.Session;
 import com.facebook.SessionLoginBehavior;
@@ -31,9 +32,9 @@ public class OBLFacebookLogin extends OBLLogin {
 	private static final String PUBLISH_PERMISSION_PREFIX = "publish";
 	private static final String MANAGE_PERMISSION_PREFIX = "manage";
 	// Request Id Constants
-	public static final int REQUEST_CODE_LOGIN = 19988;
-	public static final int REQUEST_CODE_LOGIN_READ = 19987;
-	public static final int REQUEST_CODE_LOGIN_PUBLISH = 19989;
+	public static final int REQUEST_CODE_LOGIN = 19188;
+	public static final int REQUEST_CODE_LOGIN_READ = 19187;
+	public static final int REQUEST_CODE_LOGIN_PUBLISH = 19189;
 	// Object Of Classes
 	OBLLog obllog;
 	OBLFacebookLoginInterface inter;
@@ -129,10 +130,6 @@ public class OBLFacebookLogin extends OBLLogin {
 	// authorization request for this Session.
 	public boolean ActivtyResult(int requestCode, int resultCode, Intent data) {
 
-		// Session.getActiveSession().onActivityResult(activity, requestCode,
-		// resultCode, data);
-
-		// Session.openActiveSessionFromCache(context);
 		session = Session.getActiveSession();
 		if (session == null) {
 			if (requestCode == REQUEST_CODE_LOGIN)
@@ -169,7 +166,6 @@ public class OBLFacebookLogin extends OBLLogin {
 				}
 			}
 			if (check_mandate) {
-
 				if (PublishPermission.size() != 0) {
 
 					NewPermission = new ArrayList<String>();
@@ -249,7 +245,6 @@ public class OBLFacebookLogin extends OBLLogin {
 			List<String> acceptedPermission = new ArrayList<String>();
 			acceptedPermission = session.getPermissions();
 			boolean check_mandate = true;
-
 			for (int i = 0; i < mandate_Permission.size(); i++) {
 				if (!acceptedPermission.contains(mandate_Permission.get(i))) {
 					error.setName("Permission Missing");
@@ -262,16 +257,15 @@ public class OBLFacebookLogin extends OBLLogin {
 			}
 			if (check_mandate) {
 				if (isPostCheck()) {
-
+					oblpost = new OBLFacebookPost(context, activity);
 					NewPermission = session.getPermissions();
 					if (NewPermission
 							.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
 
 						if (posttype == 1) {
-							oblpost = new OBLFacebookPost(context, activity);
+
 							oblpost.post(null);
 						} else if (posttype == 2) {
-							oblpost = new OBLFacebookPost(context, activity);
 							oblpost.postsStatusWithDetailsDescription(null,
 									null, null, null, null);
 						} else if (posttype == 0) {
@@ -299,6 +293,9 @@ public class OBLFacebookLogin extends OBLLogin {
 			error.setMessage("Login Process Cancelled");
 			error.setDescription("");
 			inter.loginResult(false, error);
+			if (requestCode == REQUEST_CODE_LOGIN
+					|| requestCode == REQUEST_CODE_LOGIN_READ)
+				logout();
 		}
 
 		if (session.isOpened()) {
@@ -318,8 +315,6 @@ public class OBLFacebookLogin extends OBLLogin {
 			Session.setActiveSession(Session.getActiveSession());
 			onSessionStateChange(session, session.getState(), null);
 			Session.setActiveSession(session);
-			obllog.logMessage("Logout Success");
-			inter.loginResult(false, null);
 		}
 
 		// onSessionStateChange(Session.getActiveSession(),
@@ -368,12 +363,10 @@ public class OBLFacebookLogin extends OBLLogin {
 		if (nativeAppAvail) {
 			// If Permission is null then do login with basic permission
 			if (mandate == null) {
-				obllog.logMessage("Mandate permission is null");
 				mandate = new String[0];
 			}
 
 			if (optional == null) {
-				obllog.logMessage("Optional permission is null");
 				optional = new String[0];
 			}
 			mandate_Permission.clear();
