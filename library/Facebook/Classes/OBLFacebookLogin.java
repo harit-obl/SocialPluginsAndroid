@@ -32,9 +32,9 @@ public class OBLFacebookLogin extends OBLLogin {
 	private static final String PUBLISH_PERMISSION_PREFIX = "publish";
 	private static final String MANAGE_PERMISSION_PREFIX = "manage";
 	// Request Id Constants
-	public static final int REQUEST_CODE_LOGIN = 199188;
-	public static final int REQUEST_CODE_LOGIN_READ = 199187;
-	public static final int REQUEST_CODE_LOGIN_PUBLISH = 199189;
+	public static final int REQUEST_CODE_LOGIN = 19188;
+	public static final int REQUEST_CODE_LOGIN_READ = 19187;
+	public static final int REQUEST_CODE_LOGIN_PUBLISH = 19189;
 	// Object Of Classes
 	OBLLog obllog;
 	OBLFacebookLoginInterface inter;
@@ -130,7 +130,6 @@ public class OBLFacebookLogin extends OBLLogin {
 	// authorization request for this Session.
 	public boolean ActivtyResult(int requestCode, int resultCode, Intent data) {
 
-		
 		session = Session.getActiveSession();
 		if (session == null) {
 			if (requestCode == REQUEST_CODE_LOGIN)
@@ -141,7 +140,6 @@ public class OBLFacebookLogin extends OBLLogin {
 					data);
 		}
 
-		
 		if (resultCode == Activity.RESULT_OK && session.isOpened()
 				&& requestCode == REQUEST_CODE_LOGIN) {
 			// onSessionStateChange(session, session.getState(), null);
@@ -151,10 +149,10 @@ public class OBLFacebookLogin extends OBLLogin {
 		if (requestCode == REQUEST_CODE_LOGIN_READ
 				&& resultCode == Activity.RESULT_OK) {
 			List<String> acceptedPermission = new ArrayList<String>();
-			
+
 			acceptedPermission = session.getPermissions();
 			boolean check_mandate = true;
-			
+
 			for (int i = 0; i < mandate_Permission.size(); i++) {
 				if (!acceptedPermission.contains(mandate_Permission.get(i))
 						&& !mandate_Permission.get(i).equals(
@@ -185,7 +183,6 @@ public class OBLFacebookLogin extends OBLLogin {
 						}
 					}
 
-					
 					if (NewPermission.size() != 0) {
 						if (session == null
 								|| session.getState() == SessionState.CLOSED_LOGIN_FAILED) {
@@ -204,7 +201,7 @@ public class OBLFacebookLogin extends OBLLogin {
 									getLoginBehaviour()).setRequestCode(
 									REQUEST_CODE_LOGIN_PUBLISH));
 						}
-					}else {
+					} else {
 						if (isPostCheck()) {
 							oblpost = new OBLFacebookPost(context, activity);
 							NewPermission = session.getPermissions();
@@ -226,9 +223,7 @@ public class OBLFacebookLogin extends OBLLogin {
 										error);
 							}
 							setPostCheck(false);
-						}
-						else
-						{
+						} else {
 							inter.loginResult(true, null);
 						}
 					}
@@ -262,21 +257,18 @@ public class OBLFacebookLogin extends OBLLogin {
 			}
 			if (check_mandate) {
 				if (isPostCheck()) {
-				
+					oblpost = new OBLFacebookPost(context, activity);
 					NewPermission = session.getPermissions();
 					if (NewPermission
 							.contains(OBLFacebookPermission.PUBLISH_ACTIONS)) {
 
 						if (posttype == 1) {
-							oblpost = new OBLFacebookPost(context, activity);
+
 							oblpost.post(null);
 						} else if (posttype == 2) {
-							oblpost = new OBLFacebookPost(context, activity);
 							oblpost.postsStatusWithDetailsDescription(null,
 									null, null, null, null);
-						}
-						else if (posttype==0)
-						{
+						} else if (posttype == 0) {
 							inter.loginResult(true, null);
 						}
 					} else {
@@ -301,6 +293,9 @@ public class OBLFacebookLogin extends OBLLogin {
 			error.setMessage("Login Process Cancelled");
 			error.setDescription("");
 			inter.loginResult(false, error);
+			if (requestCode == REQUEST_CODE_LOGIN
+					|| requestCode == REQUEST_CODE_LOGIN_READ)
+				logout();
 		}
 
 		if (session.isOpened()) {
@@ -391,7 +386,7 @@ public class OBLFacebookLogin extends OBLLogin {
 					}
 					mandate_Permission.add(mandate[i]);
 				}
-				
+
 				for (int i = 0; i < optional.length; i++) {
 					if (isPublishPermission(optional[i])) {
 						PublishPermission.add(optional[i]);
@@ -400,11 +395,10 @@ public class OBLFacebookLogin extends OBLLogin {
 					}
 					optional_Permission.add(optional[i]);
 				}
-				
+
 				// Get Active Session
 
 				if (ReadPermission.size() != 0) {
-
 
 					if (session == null
 							|| session.getState() == SessionState.CLOSED_LOGIN_FAILED

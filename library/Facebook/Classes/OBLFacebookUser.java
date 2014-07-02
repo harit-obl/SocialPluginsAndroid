@@ -1,4 +1,4 @@
-package com.example.facebooklibrary;
+package com.objectlounge.facebooklibrary;
 
 
 public class OBLFacebookUser extends OBLProfileDetails {

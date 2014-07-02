@@ -1,4 +1,4 @@
-package com.example.facebooklibrary;
+package com.objectlounge.facebooklibrary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,13 +6,14 @@ import java.util.List;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.app.Activity;
+import android.os.Bundle;
+import android.util.Log;
+
 import com.facebook.Request;
 import com.facebook.Response;
 import com.facebook.Session;
 import com.facebook.model.GraphUser;
-
-import android.app.Activity;
-import android.os.Bundle;
 
 public class OBLFacebookQuey {
 	
@@ -48,6 +49,7 @@ public class OBLFacebookQuey {
 								Response response) {
 							// TODO Auto-generated method stub
 							if (response.getError() != null) {
+								Log.e("Query Error",response.getError().toString());
 								objlog.logMessage("ERROR: "
 										+ response.getError().toString());
 								error.setName(response.getError().getCategory().toString());
@@ -60,6 +62,7 @@ public class OBLFacebookQuey {
 								userprofile = new OBLFacebookUser();
 
 								// if (permissions.contains("public_profile")) {
+							
 								if (user.getId() == null) {
 									userprofile
 											.setsocialMediaId("Not Available");
@@ -171,6 +174,8 @@ public class OBLFacebookQuey {
 								}
 								fbqinterface.userInfoReceived(userprofile,null);
 							}
+//							if (user.getLocation()!=null)
+//								Log.e("User Country",user.getLocation().toString());
 						}
 
 					});
